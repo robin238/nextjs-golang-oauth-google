@@ -1,12 +1,20 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found")
+	}
+
 	InitDB()
 
 	r := gin.Default()
@@ -23,5 +31,10 @@ func main() {
 		c.JSON(200, gin.H{"message": "Welcome dashboard"})
 	})
 
-	r.Run(":" + os.Getenv("PORT"))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback default
+	}
+
+	r.Run(":" + port)
 }
