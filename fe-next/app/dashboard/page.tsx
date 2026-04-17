@@ -14,32 +14,41 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get("token");
-    const storageToken = localStorage.getItem("authToken");
-    const token = urlToken || storageToken;
+    const init = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get("token");
+      const storageToken = localStorage.getItem("authToken");
+      const token = urlToken || storageToken;
 
-    if (!token) {
-      setUserData({ message: "Anda belum login." });
-      return;
-    }
+      if (!token) {
+        // pakai microtask biar gak dianggap synchronous
+        queueMicrotask(() => {
+          setUserData({ message: "Anda belum login." });
+        });
+        return;
+      }
 
-    if (urlToken) {
-      localStorage.setItem("authToken", urlToken);
-      params.delete("token");
-      const cleanUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-      window.history.replaceState({}, "", cleanUrl);
-    }
+      if (urlToken) {
+        localStorage.setItem("authToken", urlToken);
+        params.delete("token");
+        const cleanUrl = `${window.location.pathname}${
+          params.toString() ? `?${params.toString()}` : ""
+        }`;
+        window.history.replaceState({}, "", cleanUrl);
+      }
 
-    axios
-      .get("http://localhost:8080/dashboard", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setUserData(res.data))
-      .catch(() => {
+      try {
+        const res = await axios.get("http://localhost:8080/dashboard", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUserData(res.data);
+      } catch {
         localStorage.removeItem("authToken");
         setUserData({ message: "Sesi tidak valid. Silakan login ulang." });
-      });
+      }
+    };
+
+    init();
   }, []);
 
   const handleLogout = async () => {
@@ -50,9 +59,7 @@ export default function Dashboard() {
         await axios.post("http://localhost:8080/logout", null, {
           headers: { Authorization: `Bearer ${token}` },
         });
-      } catch (error) {
-        // Continue logout even if backend logout fails
-      }
+      } catch {}
     }
 
     localStorage.removeItem("authToken");
